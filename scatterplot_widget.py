@@ -56,8 +56,8 @@ class ScatterplotWidget(object):
         self.map_lasso = LassoSelector(map_ax, onselect=self.map_onselect)
         self.ind = []
         self.map_ind = []
-        self.refresh_table()
         self.create_buttons()
+        self.refresh_table()
         display(self.table_widget)
 
     def onselect(self, verts):
@@ -108,6 +108,10 @@ class ScatterplotWidget(object):
     def select_intersection(self):
         return self.btn_intersect.value
 
+    @property
+    def show_all_samples(self):
+        return self.btn_show_all_rows.value
+
     def create_buttons(self):
         self.btn_whole_line = widgets.ToggleButton(
             description='Whole series',
@@ -117,6 +121,10 @@ class ScatterplotWidget(object):
         self.btn_intersect = widgets.ToggleButton(
             description="Intersection",
             tooltip="Keep only the intersection with the current selection")
+
+        self.btn_show_all_rows = widgets.ToggleButton(
+            description="Show all rows",
+            tooltip="Show all rows of the corresponding grid cell")
 
         self.btn_reset = widgets.Button(
             description="Reset",
@@ -138,8 +146,10 @@ class ScatterplotWidget(object):
 
         display(
             widgets.VBox([
-                widgets.HBox([self.btn_whole_line, self.btn_intersect, self.btn_reset]),
-                widgets.HBox([self.btn_export_selection, self.txt_export, self.out_download])
+                widgets.HBox([self.btn_whole_line, self.btn_intersect,
+                              self.btn_reset, self.btn_show_all_rows]),
+                widgets.HBox([self.btn_export_selection, self.txt_export,
+                              self.out_download])
             ]))
 
     def export_selection(self, *args, **kwargs):
@@ -171,6 +181,8 @@ class ScatterplotWidget(object):
         ind = np.unique(self.map_ind)
         selected = self.lola.iloc[
             ind if len(ind) else slice(None)]
+        if self.show_all_samples:
+            selected = self.initial_df.loc[selected.index]
         self.table_widget.append_display_data(HTML(
             selected.to_html(
                 max_rows=50, escape=False)))
