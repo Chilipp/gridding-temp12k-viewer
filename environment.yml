@@ -1,0 +1,11 @@
+name: temp12k
+dependencies:
+    - cartopy
+    - xarray
+    - netcdf4
+    - openpyxl
+    - xlrd
+    - matplotlib
+    - ipywidgets
+    - ipython
+    - notebook
