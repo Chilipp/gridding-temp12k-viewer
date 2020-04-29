@@ -9,3 +9,4 @@ dependencies:
     - ipywidgets
     - ipython
     - notebook
+    - appmode
