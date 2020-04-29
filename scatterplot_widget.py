@@ -11,6 +11,10 @@ class ScatterplotWidget(object):
 
     def __init__(self, df, scatter_ax, map_ax, alpha_other=0.3, selection_color=[1., 0., 0., 1.],
                  selection_size=3):
+
+        self.exclude = set()
+        self.mean_line = None
+
         self.initial_df = df.set_index(['lon', 'lat'])
         self.df = df.reset_index().drop_duplicates(['lon', 'lat', 'time']).set_index(['lon', 'lat'])
 
@@ -54,11 +58,29 @@ class ScatterplotWidget(object):
 
         self.lasso = LassoSelector(scatter_ax, onselect=self.onselect)
         self.map_lasso = LassoSelector(map_ax, onselect=self.map_onselect)
+        self.plot_band_mean()
         self.ind = []
         self.map_ind = []
         self.create_buttons()
         self.refresh_table()
         display(self.table_widget)
+
+    @property
+    def band_mean(self):
+        df = self.initial_df
+        if self.exclude:
+            df = df[~df.TSid.isin(self.exclude)]
+        cell_means = df.groupby(
+            ['clon', 'clat', 'time']).temperature.mean()
+        band_mean = cell_means.groupby('time').mean()
+        return band_mean
+
+    def plot_band_mean(self):
+        band_mean = self.band_mean
+        if self.mean_line is not None:
+            self.mean_line.remove()
+        self.mean_line = self.collection.axes.plot(
+            band_mean.index, band_mean.values, c='magenta', lw=4)[0]
 
     def onselect(self, verts):
         path = Path(verts)
@@ -126,10 +148,27 @@ class ScatterplotWidget(object):
             description="Show all rows",
             tooltip="Show all rows of the corresponding grid cell")
 
+        self.btn_exclude_selection = widgets.Button(
+            description="Exclude in mean",
+            tooltip=("Exclude the selected time-series in the calculation of "
+                     "the band mean"))
+        self.btn_exclude_selection.on_click(self.exclude_selection)
+
+        self.btn_include_selection = widgets.Button(
+            description="Include in mean",
+            tooltip=("Include the selected time-series (or all if nothing is "
+                     "selected) in the calculation of the band mean"))
+        self.btn_include_selection.on_click(self.include_selection)
+
         self.btn_reset = widgets.Button(
             description="Reset",
             tooltip="Clear the selection")
         self.btn_reset.on_click(self.clear_selection)
+
+        self.btn_refresh_table = widgets.Button(
+            description="Refresh table",
+            tooltip="Refresh the table with the current selection")
+        self.btn_refresh_table.on_click(self.refresh_table)
 
         self.btn_export_selection = widgets.Button(
             description="Export to",
@@ -146,11 +185,31 @@ class ScatterplotWidget(object):
 
         display(
             widgets.VBox([
-                widgets.HBox([self.btn_whole_line, self.btn_intersect,
-                              self.btn_reset, self.btn_show_all_rows]),
+                widgets.HBox([self.btn_whole_line, self.btn_intersect]),
+                widgets.HBox([self.btn_exclude_selection,
+                              self.btn_include_selection]),
+                widgets.HBox([self.btn_reset, self.btn_refresh_table,
+                              self.btn_show_all_rows]),
                 widgets.HBox([self.btn_export_selection, self.txt_export,
                               self.out_download])
             ]))
+
+    def include_selection(self, *args, **kwargs):
+        if not len(self.ind):
+            self.exclude.clear()
+            self.plot_band_mean()
+        else:
+            self.exclude.difference_update(self.df.iloc[self.ind].TSid)
+            self.plot_band_mean()
+        self.canvas.draw_idle()
+
+    def exclude_selection(self, *args, **kwargs):
+        if not len(self.ind):
+            pass
+        else:
+            self.exclude.update(self.df.iloc[self.ind].TSid)
+            self.plot_band_mean()
+            self.canvas.draw_idle()
 
     def export_selection(self, *args, **kwargs):
         target_file = self.txt_export.value
@@ -175,7 +234,7 @@ class ScatterplotWidget(object):
         self.map_collection.set_facecolors(self.map_fc)
         self.refresh_table()
 
-    def refresh_table(self):
+    def refresh_table(self, *args, **kwargs):
         self.table_widget.clear_output()
         self.table_widget.clear_output()
         ind = np.unique(self.map_ind)
