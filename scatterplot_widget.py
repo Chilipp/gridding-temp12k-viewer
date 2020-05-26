@@ -13,27 +13,39 @@ class ScatterplotWidget(object):
     def __init__(self, df, scatter_ax, map_ax, alpha_other=0.3, selection_color=[1., 0., 0., 1.],
                  selection_size=3):
 
+        self.canvas = scatter_ax.figure.canvas
+        self.selection_color = selection_color
+        self.alpha_other = alpha_other
+        self.selection_size = selection_size
+        self.scatter_ax = scatter_ax
+        self.map_ax = map_ax
+
+        self.create_buttons()
+        self.table_widget = qgrid.show_grid(
+            df, show_toolbar=False,
+            grid_options={'editable': False, 'forceFitColumns': False})
+
+        self.init_df(df)
+
+    def init_df(self, df):
+
         self.exclude = set()
         self.mean_line = None
 
         self.initial_df = df.set_index(['lon', 'lat'])
         self.df = df.reset_index().drop_duplicates(['lon', 'lat', 'time']).set_index(['lon', 'lat'])
 
-        collection = scatter_ax.scatter(self.df.time, self.df.temperature, 1)
+        collection = self.scatter_ax.scatter(
+            self.df.time, self.df.temperature, 1)
 
         self.lola = lola = df.drop_duplicates(['lon', 'lat']).reset_index().set_index(['lon', 'lat'])
         lola['index'] = np.arange(len(lola))
-        map_collection = map_ax.scatter(
+        map_collection = self.map_ax.scatter(
             lola.index.get_level_values(0),
             lola.index.get_level_values(1), s=1, transform=ccrs.PlateCarree())
 
-        self.canvas = scatter_ax.figure.canvas
         self.collection = collection
         self.map_collection = map_collection
-
-        self.selection_color = selection_color
-        self.alpha_other = alpha_other
-        self.selection_size = selection_size
 
         self.xys = collection.get_offsets()
         self.Npts = len(self.xys)
@@ -55,15 +67,11 @@ class ScatterplotWidget(object):
         elif len(self.map_fc) == 1:
             self.map_fc = np.tile(self.map_fc, (self.map_Npts, 1))
 
-        self.lasso = LassoSelector(scatter_ax, onselect=self.onselect)
-        self.map_lasso = LassoSelector(map_ax, onselect=self.map_onselect)
+        self.lasso = LassoSelector(self.scatter_ax, onselect=self.onselect)
+        self.map_lasso = LassoSelector(self.map_ax, onselect=self.map_onselect)
         self.plot_band_mean()
         self.ind = []
         self.map_ind = []
-        self.create_buttons()
-        self.table_widget = qgrid.show_grid(
-            self.lola, show_toolbar=False,
-            grid_options={'editable': False, 'forceFitColumns': False})
         self.refresh_table()
 
     @property
@@ -262,4 +270,3 @@ class ScatterplotWidget(object):
         self.map_lasso.disconnect_events()
         self.map_fc[:, -1] = 1
         self.collection.set_facecolors(self.map_fc)
-        self.canvas.draw_idle()
