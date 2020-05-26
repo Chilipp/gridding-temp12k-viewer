@@ -6,6 +6,7 @@ import numpy as np
 from matplotlib.widgets import LassoSelector
 from matplotlib.path import Path
 import ipywidgets as widgets
+import qgrid
 
 class ScatterplotWidget(object):
 
@@ -25,8 +26,6 @@ class ScatterplotWidget(object):
         map_collection = map_ax.scatter(
             lola.index.get_level_values(0),
             lola.index.get_level_values(1), s=1, transform=ccrs.PlateCarree())
-
-        self.table_widget = widgets.Output()
 
         self.canvas = scatter_ax.figure.canvas
         self.collection = collection
@@ -62,8 +61,10 @@ class ScatterplotWidget(object):
         self.ind = []
         self.map_ind = []
         self.create_buttons()
+        self.table_widget = qgrid.show_grid(
+            self.lola, show_toolbar=False,
+            grid_options={'editable': False, 'forceFitColumns': False})
         self.refresh_table()
-        display(self.table_widget)
 
     @property
     def band_mean(self):
@@ -183,8 +184,7 @@ class ScatterplotWidget(object):
 
         self.out_download = widgets.Output()
 
-        display(
-            widgets.VBox([
+        self.vbox = widgets.VBox([
                 widgets.HBox([self.btn_whole_line, self.btn_intersect]),
                 widgets.HBox([self.btn_exclude_selection,
                               self.btn_include_selection]),
@@ -192,7 +192,7 @@ class ScatterplotWidget(object):
                               self.btn_show_all_rows]),
                 widgets.HBox([self.btn_export_selection, self.txt_export,
                               self.out_download])
-            ]))
+        ])
 
     def include_selection(self, *args, **kwargs):
         if not len(self.ind):
@@ -235,16 +235,12 @@ class ScatterplotWidget(object):
         self.refresh_table()
 
     def refresh_table(self, *args, **kwargs):
-        self.table_widget.clear_output()
-        self.table_widget.clear_output()
         ind = np.unique(self.map_ind)
         selected = self.lola.iloc[
             ind if len(ind) else slice(None)]
         if self.show_all_samples:
             selected = self.initial_df.loc[selected.index]
-        self.table_widget.append_display_data(HTML(
-            selected.to_html(
-                max_rows=50, escape=False)))
+        self.table_widget.df = selected
 
     def update_map(self, ind):
         if not len(self.ind) or not self.select_intersection:
