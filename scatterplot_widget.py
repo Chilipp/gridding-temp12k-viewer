@@ -190,6 +190,21 @@ class ScatterplotWidget(object):
             placeholder='Enter a filename',
         )
 
+        self.btn_copy_ids = widgets.Button(
+            description="Copy IDs",
+            tooltip="Copy the selected TSids to clipboard")
+        self.btn_copy_ids.on_click(self.copy_ids)
+
+        self.btn_copy_datasets = widgets.Button(
+            description="Copy datasetNames",
+            tooltip="Copy selected LiPD datasets names to clipboard")
+        self.btn_copy_datasets.on_click(self.copy_dataset_names)
+
+        self.btn_copy_table = widgets.Button(
+            description="Copy table",
+            tooltip="Copy the entire table to clipboard")
+        self.btn_copy_table.on_click(self.copy_all)
+
         self.out_download = widgets.Output()
 
         self.vbox = widgets.VBox([
@@ -199,7 +214,9 @@ class ScatterplotWidget(object):
                 widgets.HBox([self.btn_reset, self.btn_refresh_table,
                               self.btn_show_all_rows]),
                 widgets.HBox([self.btn_export_selection, self.txt_export,
-                              self.out_download])
+                              self.out_download]),
+                widgets.HBox([self.btn_copy_ids, self.btn_copy_datasets,
+                              self.btn_copy_table]),
         ])
 
     def include_selection(self, *args, **kwargs):
@@ -233,6 +250,24 @@ class ScatterplotWidget(object):
             f" title='Download the selection'>"
             f"     Download {target_file}"
             f"</a>"))
+
+    @property
+    def selection(self):
+        return self.table_widget.get_changed_df()
+
+    def copy_ids(self, *args, **kwargs):
+        self.copy_columns('TSid')
+
+    def copy_dataset_names(self, *args, **kwargs):
+        self.copy_columns('dataSetName')
+
+    def copy_all(self, *args, **kwargs):
+        self.selection.to_clipboard(index=False, header=True)
+
+    def copy_columns(self, *cols):
+        cols = list(cols)
+        selection = self.selection.drop_duplicates(cols)[cols]
+        selection.to_clipboard(index=False, header=False)
 
     def clear_selection(self, *args, **kwargs):
         ind = np.array([], dtype=int)
