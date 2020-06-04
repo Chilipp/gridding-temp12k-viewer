@@ -10,5 +10,6 @@ dependencies:
     - ipython
     - notebook
     - appmode
-    - qgrid
     - ipympl
+    - pip:
+        - qgrid
