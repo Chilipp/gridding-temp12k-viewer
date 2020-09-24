@@ -8,6 +8,7 @@ from matplotlib.path import Path
 import ipywidgets as widgets
 import qgrid
 
+
 class ScatterplotWidget(object):
 
     def __init__(self, df, scatter_ax, map_ax, alpha_other=0.3, selection_color=[1., 0., 0., 1.],
